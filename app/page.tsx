@@ -1,65 +1,202 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { demoEvent } from "@/data/demo-events";
+import { createHash, verifySnapshot } from "@/lib/proof";
+import {
+  createBelegnummer,
+  createDecisionId,
+  createEventId,
+  createProjectId,
+} from "@/lib/ids";
+import { createInitialAuditLog, type AuditEntry } from "@/lib/audit";
+import { ProcessSteps } from "@/components/ProcessSteps";
+import { ProofSummary } from "@/components/ProofSummary";
+import { SnapshotViewer } from "@/components/SnapshotViewer";
+import type { CivicEvent, DecisionStatus, VerificationStatus } from "@/types/civic";
+import { IntroBox } from "@/components/IntroBox";
+import { TrafficLight } from "@/components/TrafficLight";
+import { ExportReportButton } from "@/components/ExportReportButton";
 
 export default function Home() {
+  const [title, setTitle] = useState(demoEvent.title);
+  const [co2, setCo2] = useState(demoEvent.co2_kg);
+  const [budget, setBudget] = useState(demoEvent.budget_chf);
+  const [decision, setDecision] = useState<DecisionStatus>(demoEvent.decision);
+
+  const [snapshot, setSnapshot] = useState<CivicEvent | null>(null);
+  const [hash, setHash] = useState("");
+  const [replayHash, setReplayHash] = useState("");
+  const [status, setStatus] = useState<VerificationStatus | "">("");
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+
+  async function generateProof() {
+    const event: CivicEvent = {
+      project_id: createProjectId(),
+      event_id: createEventId(),
+      decision_id: createDecisionId(),
+      belegnummer: createBelegnummer(),
+      title,
+      co2_kg: co2,
+      budget_chf: budget,
+      decision,
+      audit_note:
+        "Initialer Behörden-/CO₂-Vorgang für DigiEmu Civic Proof MVP",
+    };
+
+    const original = await createHash(event);
+    const replay = await createHash(event);
+    const result = verifySnapshot(original, replay);
+
+    setSnapshot(event);
+    setHash(original);
+    setReplayHash(replay);
+    setStatus(result);
+    setAuditLog(createInitialAuditLog(result));
+  }
+
+  async function simulateFail() {
+    if (!snapshot) return;
+
+    const manipulatedSnapshot: CivicEvent = {
+      ...snapshot,
+      co2_kg: snapshot.co2_kg + 1,
+    };
+
+    const manipulated = await createHash(manipulatedSnapshot);
+    const result = verifySnapshot(hash, manipulated);
+
+    setReplayHash(manipulated);
+    setStatus(result);
+    setAuditLog(createInitialAuditLog(result));
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-slate-950 text-white p-8">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <header className="space-y-3">
+          <p className="text-sm text-cyan-300 uppercase tracking-wide">
+            DigiEmu Civic Proof MVP
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+          <h1 className="text-4xl font-bold">
+            Behörden-/CO₂-Vorgang verifizierbar machen
+          </h1>
+
+          <p className="text-slate-300">
+            Event → Entscheidung → Belegnummer → Audit → PASS/FAIL
+          </p>
+
+          <ProcessSteps />
+        </header>
+<IntroBox />
+
+        <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
+          <h2 className="text-xl font-semibold">1. Vorgang erstellen</h2>
+
+          <label className="block">
+            <span className="text-sm text-slate-300">Titel</span>
+            <input
+              className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 p-3 outline-none focus:border-cyan-400"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </label>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <label className="block">
+              <span className="text-sm text-slate-300">CO₂ kg</span>
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 p-3 outline-none focus:border-cyan-400"
+                value={co2}
+                onChange={(event) => setCo2(Number(event.target.value))}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm text-slate-300">Budget CHF</span>
+              <input
+                type="number"
+                className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 p-3 outline-none focus:border-cyan-400"
+                value={budget}
+                onChange={(event) => setBudget(Number(event.target.value))}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm text-slate-300">Entscheidung</span>
+              <select
+                className="mt-1 w-full rounded-lg bg-slate-800 border border-slate-600 p-3 outline-none focus:border-cyan-400"
+                value={decision}
+                onChange={(event) =>
+                  setDecision(event.target.value as DecisionStatus)
+                }
+              >
+                <option value="APPROVED">APPROVED</option>
+                <option value="REVIEW">REVIEW</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            onClick={generateProof}
+            className="rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-5 py-3"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            Proof erzeugen
+          </button>
+        </section>
+
+        {snapshot && (
+          <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
+            <h2 className="text-xl font-semibold">2. DigiEmu Nachweis</h2>
+
+            <ProofSummary snapshot={snapshot} status={status} />
+<TrafficLight status={status} />
+
+            <SnapshotViewer
+              snapshot={snapshot}
+              hash={hash}
+              replayHash={replayHash}
+            />
+
+            <div className="bg-slate-800 rounded-xl p-4">
+              <p className="text-sm text-slate-400 mb-3">Audit Log</p>
+
+              <div className="space-y-2">
+                {auditLog.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-lg border border-slate-700 bg-slate-900 p-3"
+                  >
+                    <p className="font-mono text-xs text-cyan-300">
+                      {entry.action}
+                    </p>
+                    <p className="text-sm text-slate-200">{entry.message}</p>
+                    <p className="text-xs text-slate-500">
+                      {entry.created_at}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+<ExportReportButton
+  snapshot={snapshot}
+  hash={hash}
+  replayHash={replayHash}
+  status={status}
+  auditLog={auditLog}
+/>
+            <button
+              onClick={simulateFail}
+              className="rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold px-5 py-3"
+            >
+              Manipulation simulieren → FAIL
+            </button>
+          </section>
+        )}
+      </div>
+    </main>
   );
 }
