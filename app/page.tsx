@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { demoEvent } from "@/data/demo-events";
-import { createHash, verifySnapshot } from "@/lib/proof";
+import { verifyWithApi } from "@/lib/verify-client";
 import {
   createBelegnummer,
   createDecisionId,
@@ -13,10 +13,14 @@ import { createInitialAuditLog, type AuditEntry } from "@/lib/audit";
 import { ProcessSteps } from "@/components/ProcessSteps";
 import { ProofSummary } from "@/components/ProofSummary";
 import { SnapshotViewer } from "@/components/SnapshotViewer";
-import type { CivicEvent, DecisionStatus, VerificationStatus } from "@/types/civic";
 import { IntroBox } from "@/components/IntroBox";
 import { TrafficLight } from "@/components/TrafficLight";
 import { ExportReportButton } from "@/components/ExportReportButton";
+import type {
+  CivicEvent,
+  DecisionStatus,
+  VerificationStatus,
+} from "@/types/civic";
 
 export default function Home() {
   const [title, setTitle] = useState(demoEvent.title);
@@ -44,15 +48,13 @@ export default function Home() {
         "Initialer Behörden-/CO₂-Vorgang für DigiEmu Civic Proof MVP",
     };
 
-    const original = await createHash(event);
-    const replay = await createHash(event);
-    const result = verifySnapshot(original, replay);
+    const verification = await verifyWithApi(event);
 
     setSnapshot(event);
-    setHash(original);
-    setReplayHash(replay);
-    setStatus(result);
-    setAuditLog(createInitialAuditLog(result));
+    setHash(verification.original_hash);
+    setReplayHash(verification.replay_hash);
+    setStatus(verification.status);
+    setAuditLog(createInitialAuditLog(verification.status));
   }
 
   async function simulateFail() {
@@ -63,12 +65,11 @@ export default function Home() {
       co2_kg: snapshot.co2_kg + 1,
     };
 
-    const manipulated = await createHash(manipulatedSnapshot);
-    const result = verifySnapshot(hash, manipulated);
+    const verification = await verifyWithApi(snapshot, manipulatedSnapshot);
 
-    setReplayHash(manipulated);
-    setStatus(result);
-    setAuditLog(createInitialAuditLog(result));
+    setReplayHash(verification.replay_hash);
+    setStatus(verification.status);
+    setAuditLog(createInitialAuditLog(verification.status));
   }
 
   return (
@@ -89,7 +90,8 @@ export default function Home() {
 
           <ProcessSteps />
         </header>
-<IntroBox />
+
+        <IntroBox />
 
         <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
           <h2 className="text-xl font-semibold">1. Vorgang erstellen</h2>
@@ -153,7 +155,8 @@ export default function Home() {
             <h2 className="text-xl font-semibold">2. DigiEmu Nachweis</h2>
 
             <ProofSummary snapshot={snapshot} status={status} />
-<TrafficLight status={status} />
+
+            <TrafficLight status={status} />
 
             <SnapshotViewer
               snapshot={snapshot}
@@ -181,19 +184,23 @@ export default function Home() {
                 ))}
               </div>
             </div>
-<ExportReportButton
-  snapshot={snapshot}
-  hash={hash}
-  replayHash={replayHash}
-  status={status}
-  auditLog={auditLog}
-/>
-            <button
-              onClick={simulateFail}
-              className="rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold px-5 py-3"
-            >
-              Manipulation simulieren → FAIL
-            </button>
+
+            <div className="flex flex-wrap gap-3">
+              <ExportReportButton
+                snapshot={snapshot}
+                hash={hash}
+                replayHash={replayHash}
+                status={status}
+                auditLog={auditLog}
+              />
+
+              <button
+                onClick={simulateFail}
+                className="rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold px-5 py-3"
+              >
+                Manipulation simulieren → FAIL
+              </button>
+            </div>
           </section>
         )}
       </div>
