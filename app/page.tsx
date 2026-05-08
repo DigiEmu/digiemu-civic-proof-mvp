@@ -32,6 +32,7 @@ export default function Home() {
   const [hash, setHash] = useState("");
   const [replayHash, setReplayHash] = useState("");
   const [status, setStatus] = useState<VerificationStatus | "">("");
+  const [engine, setEngine] = useState("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
   async function generateProof() {
@@ -54,6 +55,7 @@ export default function Home() {
     setHash(verification.original_hash);
     setReplayHash(verification.replay_hash);
     setStatus(verification.status);
+    setEngine(verification.engine);
     setAuditLog(createInitialAuditLog(verification.status));
   }
 
@@ -69,6 +71,7 @@ export default function Home() {
 
     setReplayHash(verification.replay_hash);
     setStatus(verification.status);
+    setEngine(verification.engine);
     setAuditLog(createInitialAuditLog(verification.status));
   }
 
@@ -157,6 +160,13 @@ export default function Home() {
             <ProofSummary snapshot={snapshot} status={status} />
 
             <TrafficLight status={status} />
+
+            <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
+              <p className="text-sm text-slate-400">Verification Engine</p>
+              <p className="mt-1 font-mono text-sm text-cyan-300">
+                {engine || "not initialized"}
+              </p>
+            </div>
 
             <SnapshotViewer
               snapshot={snapshot}
