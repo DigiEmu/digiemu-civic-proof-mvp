@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { demoEvent } from "@/data/demo-events";
+import { demoEvent, demoEvents } from "@/data/demo-events";
 import { verifyWithApi } from "@/lib/verify-client";
 import {
   createBelegnummer,
@@ -23,6 +23,8 @@ import type {
 } from "@/types/civic";
 
 export default function Home() {
+  const [selectedDemoIndex, setSelectedDemoIndex] = useState(0);
+
   const [title, setTitle] = useState(demoEvent.title);
   const [co2, setCo2] = useState(demoEvent.co2_kg);
   const [budget, setBudget] = useState(demoEvent.budget_chf);
@@ -35,9 +37,28 @@ export default function Home() {
   const [engine, setEngine] = useState("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
+  function loadDemoCase(index: number) {
+    const demo = demoEvents[index];
+
+    setSelectedDemoIndex(index);
+    setTitle(demo.title);
+    setCo2(demo.co2_kg);
+    setBudget(demo.budget_chf);
+    setDecision(demo.decision);
+
+    setSnapshot(null);
+    setHash("");
+    setReplayHash("");
+    setStatus("");
+    setEngine("");
+    setAuditLog([]);
+  }
+
   async function generateProof() {
+    const selectedDemo = demoEvents[selectedDemoIndex];
+
     const event: CivicEvent = {
-      project_id: createProjectId(),
+      project_id: selectedDemo?.project_id ?? createProjectId(),
       event_id: createEventId(),
       decision_id: createDecisionId(),
       belegnummer: createBelegnummer(),
@@ -46,6 +67,7 @@ export default function Home() {
       budget_chf: budget,
       decision,
       audit_note:
+        selectedDemo?.audit_note ??
         "Initialer Behörden-/CO₂-Vorgang für DigiEmu Civic Proof MVP",
     };
 
@@ -95,6 +117,35 @@ export default function Home() {
         </header>
 
         <IntroBox />
+
+        <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
+          <h2 className="text-xl font-semibold">Demo-Case auswählen</h2>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {demoEvents.map((demo, index) => (
+              <button
+                key={demo.project_id}
+                onClick={() => loadDemoCase(index)}
+                className={`rounded-xl border p-4 text-left transition ${
+                  selectedDemoIndex === index
+                    ? "border-cyan-400 bg-cyan-950/40"
+                    : "border-slate-700 bg-slate-800 hover:border-cyan-700"
+                }`}
+              >
+                <p className="font-mono text-xs text-cyan-300">
+                  {demo.project_id}
+                </p>
+                <p className="mt-2 font-semibold">{demo.title}</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  CO₂: {demo.co2_kg} kg · Budget: {demo.budget_chf} CHF
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Entscheidung: {demo.decision}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
 
         <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
           <h2 className="text-xl font-semibold">1. Vorgang erstellen</h2>
