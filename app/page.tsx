@@ -22,6 +22,7 @@ import type {
   VerificationStatus,
 } from "@/types/civic";
 import { DemoStats } from "@/components/DemoStats";
+import { RoadmapBox } from "@/components/RoadmapBox";
 
 export default function Home() {
   const [selectedDemoIndex, setSelectedDemoIndex] = useState(0);
@@ -120,7 +121,7 @@ export default function Home() {
         <IntroBox />
 
 <DemoStats events={demoEvents} />
-
+<RoadmapBox />
         <section className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-5">
           <h2 className="text-xl font-semibold">Demo-Case auswählen</h2>
 
